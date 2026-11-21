@@ -5,7 +5,8 @@
 The entry is the editorial poster ``entry.png`` shipped beside this file:
 a single image summing up the world news of Saturday 21 November 2026.
 This program is the deterministic runner. It loads the poster, rejects it
-unless it is a PNG inside the 1 MiB / 1024 px limits, writes the exact
+unless it is a complete PNG inside the 1 MiB / 1024 px limits (signature,
+IHDR chunk and IEND trailer all checked), writes the exact
 same bytes to ``entry.png`` in the grader's output directory, and checks
 the copy with a SHA-256 comparison before printing a fixed log of the
 stories the poster carries. Standard library only; no network, no clock,
@@ -21,6 +22,8 @@ SLUG = "news-image-20261121"
 DAY = "2026-11-21"
 POSTER_FILE = "entry.png"
 PNG_HEADER = b"\x89PNG\r\n\x1a\n"
+IHDR_TAG = b"IHDR"
+IEND_TRAILER = b"\x00\x00\x00\x00IEND\xaeB`\x82"
 LIMIT_BYTES = 1048576
 LIMIT_SIDE = 1024
 
@@ -46,6 +49,12 @@ def read_validated_poster():
         sys.exit(1)
     if not blob.startswith(PNG_HEADER):
         print("poster is not a PNG file", file=sys.stderr)
+        sys.exit(1)
+    if blob[12:16] != IHDR_TAG:
+        print("poster has no IHDR chunk", file=sys.stderr)
+        sys.exit(1)
+    if not blob.endswith(IEND_TRAILER):
+        print("poster is truncated: no IEND chunk", file=sys.stderr)
         sys.exit(1)
     if len(blob) > LIMIT_BYTES:
         print("poster over 1 MiB: %d bytes" % len(blob), file=sys.stderr)
